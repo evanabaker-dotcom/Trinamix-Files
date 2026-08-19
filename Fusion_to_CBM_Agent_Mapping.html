@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fusion to CBM<br>Agent Mapping — Trinamix</title>
+<style>
+  :root{
+    --indigo:#26007E;
+    --violet-start:#2C0385;
+    --violet:#9E42FF;
+    --teal:#0EA5A5;
+    --charcoal:#22252B;
+    --slate:#595966;
+    --white:#FFFFFF;
+    --stage-w: 1920px;
+    --stage-h: 1080px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    width:100%; height:100%; overflow:hidden;
+    background: #12042E;
+    font-family: "Calibri","Segoe UI",Arial,sans-serif;
+    color: var(--charcoal);
+  }
+  #viewport{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(1200px 800px at 15% 10%, rgba(158,66,255,.16), transparent 60%),
+      radial-gradient(1000px 700px at 85% 90%, rgba(14,165,165,.14), transparent 60%),
+      #12042E;
+  }
+  #stage{
+    position:relative;
+    width:var(--stage-w); height:var(--stage-h);
+    background:#ffffff;
+    overflow:hidden;
+    box-shadow: 0 40px 120px rgba(0,0,0,.55);
+    border-radius: 6px;
+  }
+
+  /* ---------- SLIDES ---------- */
+  .slide{
+    position:absolute; inset:0;
+    opacity:0; pointer-events:none;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .slide.active{ opacity:1; pointer-events:auto; z-index:2; }
+  .slide.leaving{ opacity:1; z-index:1; }
+  .slide.leaving .reveal{ animation: revealOut .45s ease forwards; }
+  .slide .reveal{ opacity:0; }
+  .slide.active .reveal{
+    animation: revealIn .7s cubic-bezier(.16,1,.3,1) forwards;
+    animation-delay: calc(var(--i,0) * 70ms);
+  }
+  .slide.active .ptable-cell.reveal{
+    animation-delay: calc(var(--i,0) * 16ms);
+  }
+  @keyframes revealIn{
+    from{ opacity:0; transform: translateY(26px); filter: blur(6px); }
+    to{ opacity:1; transform: translateY(0); filter: blur(0); }
+  }
+  @keyframes revealOut{
+    from{ opacity:1; transform: translateY(0); }
+    to{ opacity:0; transform: translateY(-16px); }
+  }
+
+  .slide-dark{ background: linear-gradient(135deg, var(--violet-start) 0%, #4B0FB8 45%, var(--violet) 100%); background-size:220% 220%; animation: gradientDrift 18s ease-in-out infinite; color:#fff; }
+  @keyframes gradientDrift{
+    0%{ background-position: 0% 30%; }
+    50%{ background-position: 100% 70%; }
+    100%{ background-position: 0% 30%; }
+  }
+  .slide-light{ background:
+      radial-gradient(900px 600px at 10% 0%, var(--tint, rgba(158,66,255,.08)), transparent 55%),
+      radial-gradient(700px 500px at 100% 100%, var(--tint2, rgba(14,165,165,.07)), transparent 55%),
+      #FAF9FC;
+  }
+
+  /* ---------- ORBIT / FLOATING ELEMENTS ---------- */
+  .orbit-field{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+  .ring{ position:absolute; border-radius:50%; border:1px dashed rgba(255,255,255,.18); top:50%; left:50%; animation: spin linear infinite; }
+  .slide-light .ring{ border-color: rgba(38,0,126,.10); }
+  .ring .node{ position:absolute; top:-6px; left:50%; width:11px; height:11px; margin-left:-5px; border-radius:50%; background: var(--dot,#9E42FF); box-shadow:0 0 18px var(--dot,#9E42FF); }
+  .ring.r1{ width:520px; height:520px; margin:-260px 0 0 -260px; animation-duration:34s; }
+  .ring.r2{ width:820px; height:820px; margin:-410px 0 0 -410px; animation-duration:52s; animation-direction:reverse; }
+  .ring.r3{ width:1140px; height:1140px; margin:-570px 0 0 -570px; animation-duration:70s; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .blob{ position:absolute; border-radius:50%; filter: blur(90px); opacity:.30; animation: drift 22s ease-in-out infinite alternate; pointer-events:none; z-index:0; }
+  @keyframes drift{ from{ transform: translate(0,0) scale(1); } to{ transform: translate(70px,-50px) scale(1.18); } }
+
+  .particles{ position:absolute; inset:0; pointer-events:none; z-index:0; }
+  .particle{ position:absolute; width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.55); animation: floatUp linear infinite; }
+  .slide-light .particle{ background: rgba(38,0,126,.28); }
+  @keyframes floatUp{
+    from{ transform: translateY(0) translateX(0); opacity:0; }
+    10%{ opacity:1; }
+    90%{ opacity:1; }
+    to{ transform: translateY(-140px) translateX(30px); opacity:0; }
+  }
+
+  /* ---------- GLASS ---------- */
+  .glass{
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.7);
+    box-shadow: 0 8px 32px rgba(38,0,126,.10);
+  }
+  .slide-dark .glass{
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.28);
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+  }
+
+  /* ---------- COMMON TYPE ---------- */
+  .eyebrow{ letter-spacing:.22em; text-transform:uppercase; font-size:15px; font-weight:700; opacity:.85; }
+  .wordmark{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; letter-spacing:.06em; }
+  h1.big-title{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:66px; line-height:1.06; letter-spacing:-.01em; }
+  h2.section-title{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:40px; color:var(--indigo); letter-spacing:-.01em; }
+  .subtitle{ font-size:21px; font-weight:400; opacity:.92; line-height:1.5; }
+  .body-text{ color:var(--charcoal); font-size:16px; line-height:1.6; }
+  .muted{ color: var(--slate); }
+
+  /* ---------- TOP HEADER BAR (content slides) ---------- */
+  .topbar{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:30px 64px 0 64px; }
+  .brand-mark{ display:flex; align-items:center; gap:10px; font-size:13px; letter-spacing:.18em; }
+  .brand-mark .dot3{ display:inline-flex; gap:3px; }
+  .brand-mark .dot3 span{ width:6px; height:6px; border-radius:1px; display:inline-block; }
+  .pillar-chip{
+    display:inline-flex; align-items:center; gap:10px; padding:8px 18px; border-radius:999px;
+    font-weight:700; font-size:12.5px; letter-spacing:.07em; color:#fff;
+  }
+
+  /* ---------- COVER ---------- */
+  .cover-wrap{ position:relative; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 100px; z-index:2; }
+  .stat-row{ display:flex; gap:20px; margin-top:44px; flex-wrap:wrap; }
+  .stat-chip{ padding:18px 26px; border-radius:16px; min-width:150px; }
+  .stat-chip .num{ font-family:"Montserrat","Calibri",sans-serif; font-size:38px; font-weight:800; line-height:1; }
+  .stat-chip .lbl{ font-size:13px; letter-spacing:.08em; text-transform:uppercase; opacity:.8; margin-top:6px; }
+  .cover-footer{ position:relative; z-index:2; display:flex; justify-content:space-between; padding:0 100px 46px 100px; font-size:14px; opacity:.85; }
+
+  /* ---------- OVERVIEW GRID ---------- */
+  .overview-wrap{ position:relative; z-index:2; flex:1; padding:22px 64px 20px 64px; display:flex; flex-direction:column; }
+  .ptable-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows:120px; align-content:start; gap:12px; margin-top:20px; }
+  .ptable-cell{
+    position:relative; border-radius:12px; padding:12px 14px; color:#fff; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .ptable-cell:hover{ transform: translateY(-5px) scale(1.025); box-shadow: 0 12px 28px rgba(38,0,126,.28); z-index:5; }
+  .ptable-cell .pnum{ font-size:10.5px; font-weight:700; opacity:.85; }
+  .ptable-cell .psym{ font-family:"Montserrat","Calibri",sans-serif; font-size:21px; font-weight:800; line-height:1; margin-top:3px; }
+  .ptable-cell .pname{ font-size:11px; line-height:1.25; font-weight:600; opacity:.96; margin-top:5px; }
+  .ptable-cell .ppillar{ font-size:9px; letter-spacing:.07em; text-transform:uppercase; opacity:.75; margin-top:auto; }
+  .legend-row{ display:flex; gap:22px; flex-wrap:wrap; padding-top:16px; margin-top:auto; }
+  .legend-item{ display:flex; align-items:center; gap:9px; font-size:13px; font-weight:600; color:var(--charcoal); }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; }
+
+  /* ---------- PIPELINE DETAIL SLIDES (one slide per item, levels flow left-to-right) ---------- */
+  .ws-wrap{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; padding:22px 60px 26px 60px; }
+  .ws-num-badge{ font-family:"Montserrat","Calibri",sans-serif; font-size:110px; font-weight:800; line-height:1; opacity:.09; position:absolute; top:-8px; right:0px; }
+  .ws-head{ position:relative; }
+  .ws-title{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:38px; color:var(--indigo); letter-spacing:-.01em; margin-top:6px; }
+  .purpose-strip{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+  .purpose-pill{ display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:10px; font-size:12.5px; font-weight:600; color:#fff; }
+  .purpose-label{ font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--slate); margin-top:20px; }
+
+  .level-flow{ flex:1; display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .level-card{
+    flex:1; min-width:0; border-radius:16px; padding:18px 16px; display:flex; flex-direction:column;
+    transition: transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease;
+  }
+  .level-card:hover{ transform: translateY(-6px); box-shadow: 0 16px 34px rgba(38,0,126,.18); z-index:6; }
+  .lc-badge{ font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#fff; display:inline-block; padding:4px 10px; border-radius:6px; width:fit-content; }
+  .lc-title{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:14px; color:var(--indigo); margin-top:12px; line-height:1.25; min-height:36px; }
+  .level-card ul{ margin-top:10px; list-style:none; padding:0; }
+  .level-card li{ font-size:12px; line-height:1.5; padding-left:14px; position:relative; color:var(--charcoal); margin-bottom:6px; }
+  .level-card li:before{ content:"\203A"; position:absolute; left:0; color:var(--gc,#9E42FF); font-weight:800; }
+  .flow-arrow{ flex:0 0 auto; font-size:20px; color:var(--slate); opacity:.45; }
+
+  /* ---------- CARDS DETAIL SLIDES (one slide per category, grid of item cards) ---------- */
+  .group-wrap{ position:relative; z-index:2; flex:1; display:flex; padding:26px 64px 30px 64px; gap:40px; }
+  .group-side{ width:320px; flex-shrink:0; display:flex; flex-direction:column; justify-content:flex-start; padding-top:18px; }
+  .group-num-badge{ font-family:"Montserrat","Calibri",sans-serif; font-size:100px; font-weight:800; line-height:1; opacity:.14; position:absolute; top:6px; right:-6px; }
+  .group-side .count-pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; font-weight:700; font-size:13px; color:#fff; width:fit-content; margin-top:16px; }
+  .group-side .group-blurb{ margin-top:18px; font-size:16px; line-height:1.6; color:var(--slate); }
+  .group-main{ flex:1; display:grid; gap:14px; align-content:start; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .agent-card{
+    position:relative; border-radius:14px; padding:16px 18px; cursor:default;
+    transition: transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease;
+  }
+  .agent-card:hover{ transform: translateY(-6px); box-shadow: 0 16px 34px rgba(38,0,126,.18); z-index:6; }
+  .agent-card .a-top{ display:flex; align-items:center; gap:10px; }
+  .agent-card .a-num{ font-size:11px; font-weight:800; color:#fff; background:var(--gc,#9E42FF); border-radius:6px; padding:2px 7px; }
+  .agent-card .a-sym{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:15px; color:var(--gc,#9E42FF); letter-spacing:.03em; }
+  .agent-card .a-name{ font-weight:700; font-size:15px; color:var(--indigo); margin-top:8px; line-height:1.25; }
+  .agent-card .a-cap{ font-size:12.5px; color:var(--slate); margin-top:6px; line-height:1.45; }
+  .agent-card .a-more{ max-height:0; overflow:hidden; transition: max-height .35s ease, opacity .3s ease; opacity:0; }
+  .agent-card:hover .a-more{ max-height:200px; opacity:1; margin-top:8px; }
+  .agent-card .a-more ul{ list-style:none; padding:0; }
+  .agent-card .a-more li{ font-size:11.5px; color:var(--charcoal); padding:3px 0 3px 14px; position:relative; line-height:1.4; }
+  .agent-card .a-more li:before{ content:"\203A"; position:absolute; left:0; color:var(--gc,#9E42FF); font-weight:800; }
+  .agent-card .a-module{ margin-top:8px; display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.03em; color:var(--gc,#9E42FF); background: rgba(0,0,0,.04); padding:3px 8px; border-radius:6px; }
+
+  /* bigger cards when a category has few items */
+  .group-main.few-items .agent-card{ padding:26px 26px; }
+  .group-main.few-items .a-name{ font-size:19px; margin-top:12px; }
+  .group-main.few-items .a-cap{ font-size:14px; margin-top:8px; }
+  .group-main.few-items .agent-card:hover .a-more{ max-height:260px; }
+  .group-main.few-items .a-more li{ font-size:13px; }
+
+  /* ---------- CLOSING ---------- */
+  .closing-wrap{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 100px; color:#fff; }
+  .insight-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:18px; margin-top:36px; }
+  .insight-card{ padding:22px 24px; border-radius:16px; }
+  .insight-card .ic-num{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:26px; opacity:.5; }
+  .insight-card p{ font-size:15.5px; line-height:1.55; margin-top:8px; }
+  .cta-row{ margin-top:38px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .cta-btn{ padding:14px 30px; border-radius:999px; background:#fff; color:var(--indigo); font-weight:800; font-size:15px; letter-spacing:.02em; }
+  .source-note{ font-size:12.5px; opacity:.7; margin-top:6px; }
+
+  /* ---------- NAV / CONTROLS ---------- */
+  #controls{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    display:flex; align-items:center; gap:16px; z-index:50;
+    padding:10px 18px; border-radius:999px;
+    background: rgba(18,4,46,.55); backdrop-filter: blur(14px);
+    border:1px solid rgba(255,255,255,.14);
+  }
+  .nav-btn{
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+    background: rgba(255,255,255,.12); color:#fff; font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .nav-btn:hover{ background: var(--violet); transform: scale(1.08); }
+  #dots{ display:flex; gap:6px; max-width:520px; overflow:hidden; }
+  .dot{ width:7px; height:7px; border-radius:50%; background: rgba(255,255,255,.28); cursor:pointer; transition: all .25s ease; flex:0 0 auto; }
+  .dot.active{ background: var(--violet); width:20px; border-radius:5px; }
+  #counter{ color:#fff; font-size:12px; letter-spacing:.05em; min-width:52px; text-align:center; opacity:.85; }
+
+  #progress{ position:fixed; top:0; left:0; height:3px; background: linear-gradient(90deg, var(--violet), var(--teal)); z-index:60; transition: width .4s cubic-bezier(.16,1,.3,1); }
+
+  .hint{ position:fixed; right:26px; bottom:26px; color:rgba(255,255,255,.55); font-size:11px; letter-spacing:.05em; z-index:50; }
+</style>
+</head>
+<body>
+
+<div id="progress" style="width:0%"></div>
+<div id="viewport">
+  <div id="stage">
+    <!-- SLIDES_PLACEHOLDER -->
+  </div>
+</div>
+
+<div id="controls">
+  <button class="nav-btn" id="prevBtn" aria-label="Previous">‹</button>
+  <div id="dots"></div>
+  <button class="nav-btn" id="nextBtn" aria-label="Next">›</button>
+  <span id="counter">01 / 01</span>
+</div>
+<div class="hint">↑ ↓ / ← → to navigate</div>
+
+<script>
+const DECK_SPEC = {"meta": {"title": "Fusion to CBM<br>Agent Mapping", "eyebrow": "ORACLE FUSION CLOUD · AI AGENT CROSSWALK", "topRightChip": "CBM COMPONENT BUSINESS MODEL", "subtitle": "A system-first crosswalk of every Oracle Fusion AI agent and agentic application to Trinamix's authoritative CBM taxonomy — module and agent through to platform, workstream, process group, and task-matched process.", "stats": [{"num": "45", "lbl": "Mapped Entries"}, {"num": "6", "lbl": "CBM Platforms"}, {"num": "1", "lbl": "Documented Gap"}], "footerLeft": "Trinamix Oracle Cloud Consulting Practice", "footerRight": "Source: CBM-Component Business Model Framework 062426.xlsx", "overviewHeading": "45 Entries, Six CBM Platforms", "overviewBlurb": "Every Oracle AI agent mapped to the CBM platform, workstream, and process group it operates within.", "overviewChip": "FULL CROSSWALK MAP", "itemLabelPlural": "AGENTS & ENTRIES"}, "categories": [{"key": "finance", "title": "Finance", "color": "#9E42FF", "blurb": "General ledger, close, reconciliation, fixed assets, cost accounting, and project financials — including the deck's one documented capability gap."}, {"key": "supplychain", "title": "Supply Chain & Operations", "color": "#7C4FE0", "blurb": "The largest platform group — procure-to-pay, planning, manufacturing, inventory, and supplier management agents."}, {"key": "enterprise", "title": "Enterprise Capabilities", "color": "#5C5CE0", "blurb": "Cross-cutting platform agents for security, integrations, analytics, and the underlying agentic AI infrastructure itself."}, {"key": "hire2retire", "title": "Hire to Retire", "color": "#3D6FDB", "blurb": "The full HCM agent set — workforce structure, talent, performance, recruiting, scheduling, and manager self-service."}, {"key": "engineering", "title": "Engineering & Product", "color": "#1E8FC7", "blurb": "Product lifecycle and change management — currently represented by a single agent, Component Replacement."}, {"key": "commercial", "title": "Commercial & Revenue", "color": "#0EA5A5", "blurb": "CPQ quoting, pricing, discounting, and deal-support agents spanning the lead-to-order cycle."}], "detail_mode": "cards", "items": [{"num": 1, "code": "LDG", "name": "Ledger Agent", "category": "finance", "summary": "Natural-language GL monitoring, variance explanation, and auto-drafted adjustment journals", "bullets": ["Natural-language GL monitoring, variance explanation, and auto-drafted adjustment journals", "Record-to-Report (R2R) — Journal Management", "Create manual journals / Post subledger entries"], "module": "General Ledger (GL)"}, {"num": 2, "code": "PAY", "name": "Payables Agent (Document Agent)", "category": "supplychain", "summary": "Ingests, extracts, matches, and codes supplier invoices to POs/receipts; creates distributions", "bullets": ["Ingests, extracts, matches, and codes supplier invoices to POs/receipts; creates distributions", "Procure-to-Pay (P2P) — Receipt & Invoice Matching", "Match invoices to POs / Resolve matching exceptions"], "module": "Payables (AP)"}, {"num": 3, "code": "EXP", "name": "Expenses Agent", "category": "finance", "summary": "Reads receipts, matches them to card charges, and validates expense policy", "bullets": ["Reads receipts, matches them to card charges, and validates expense policy", "Record-to-Report (R2R) — Ledger Maintenance", "Post subledger entries / Validate supporting documentation"], "module": "Expenses"}, {"num": 4, "code": "PMT", "name": "Payments Agent", "category": "supplychain", "summary": "Automates payment-run preparation and execution and flags payment exceptions", "bullets": ["Automates payment-run preparation and execution and flags payment exceptions", "Procure-to-Pay (P2P) — Payment Processing", "Execute payment batches / Schedule payments"], "module": "Cash Management / Payments"}, {"num": 5, "code": "FMA", "name": "Financial Monitoring Agent", "category": "finance", "summary": "Monitors user-defined conditions and provides context-aware variance explanations and alerts", "bullets": ["Monitors user-defined conditions and provides context-aware variance explanations and alerts", "Record-to-Report (R2R) — Journal Management", "Run account analysis / Investigate variances"], "module": "General Ledger (GL) / FP&A"}, {"num": 6, "code": "ICR", "name": "Intercompany Reconciliation Agent", "category": "finance", "summary": "Matches cross-entity and cross-ledger balances and proposes eliminations", "bullets": ["Matches cross-entity and cross-ledger balances and proposes eliminations", "Consolidation-to-Close (C2C) — Intercompany Elimination", "Process eliminations / Balance intercompany"], "module": "General Ledger (GL) - Intercompany"}, {"num": 7, "code": "FAR", "name": "Fixed Assets Reconciliation Agent", "category": "finance", "summary": "Reconciles the fixed-asset subledger to GL and routes reconciliation breaks", "bullets": ["Reconciles the fixed-asset subledger to GL and routes reconciliation breaks", "Acquire-to-Retire (A2R) — Asset Tracking & Maintenance", "Maintain asset records / Investigate reconciliation breaks"], "module": "Assets"}, {"num": 8, "code": "BCR", "name": "Bank / Cash Reconciliation Agent", "category": "finance", "summary": "Imports and auto-matches bank statements and investigates unmatched items", "bullets": ["Imports and auto-matches bank statements and investigates unmatched items", "Consolidation-to-Close (C2C) — Account Reconciliation", "Run reconciliation rules / Clear reconciling items"], "module": "Cash Management"}, {"num": 9, "code": "CAC", "name": "Cost Accounting Close Workspace", "category": "finance", "summary": "Coordinates cost rollups, overhead allocation, variance analysis, and close exceptions", "bullets": ["Coordinates cost rollups, overhead allocation, variance analysis, and close exceptions", "Costing & Cost Accounting — Cost Rollup Processing / Overhead Allocation", "Process cost updates / Allocate overhead / Close cost periods"], "module": "Cost Accounting"}, {"num": 10, "code": "SCC", "name": "Security Command Center (agentic app)", "category": "enterprise", "summary": "Monitors configuration and access changes, segregation of duties, and SOX workflows", "bullets": ["Monitors configuration and access changes, segregation of duties, and SOX workflows", "Security & Controls (SOX) — Access Control Review / Control Testing & Evidence", "Perform access reviews / Test controls / Track remediation"], "module": "Risk Management / Financials Security"}, {"num": 11, "code": "PLC", "name": "Planning Cycle Agent", "category": "supplychain", "summary": "Retrieves, assigns, and updates supply-chain planning tasks inside the planning workspace", "bullets": ["Retrieves, assigns, and updates supply-chain planning tasks inside the planning workspace", "Forecast-to-Plan, Plan-to-Build, Build-to-Ship — Supply & Capacity Planning", "Balance supply and demand / Run planning scenarios"], "module": "Supply Planning / Planning Central"}, {"num": 12, "code": "PME", "name": "Planning Measure Expression Agent", "category": "supplychain", "summary": "Creates planning measures and KPIs from natural-language requests", "bullets": ["Creates planning measures and KPIs from natural-language requests", "Forecast-to-Plan, Plan-to-Build, Build-to-Ship — Demand Forecasting & S&OP", "Generate demand forecasts / Define planning measures"], "module": "Supply Planning / Demand Management"}, {"num": 13, "code": "CRA", "name": "Component Replacement Agent", "category": "engineering", "summary": "Identifies affected components, recommends alternatives, analyzes impact, and generates change orders", "bullets": ["Identifies affected components, recommends alternatives, analyzes impact, and generates change orders", "BOM and Change Management — Component Substitution / Change Order Processing", "Execute substitutions / Process engineering changes"], "module": "Product Lifecycle Management (PLM) / Product Hub"}, {"num": 14, "code": "ASA", "name": "Autonomous Sourcing Agent", "category": "supplychain", "summary": "Selects eligible requisitions and autonomously runs policy-governed supplier negotiations", "bullets": ["Selects eligible requisitions and autonomously runs policy-governed supplier negotiations", "Procure-to-Pay (P2P) — Supplier & Contract Administration", "Select suppliers / Request quotes / Conduct sourcing negotiations"], "module": "Sourcing (Procurement)"}, {"num": 15, "code": "OPS", "name": "Outside Processing Shipping Agent", "category": "supplychain", "summary": "Coordinates outside-processing shipments with suppliers", "bullets": ["Coordinates outside-processing shipments with suppliers", "Forecast-to-Plan, Plan-to-Build, Build-to-Ship — Shipment & Logistics Management", "Coordinate outbound shipments / Confirm shipment dates"], "module": "Manufacturing (Outside Processing)"}, {"num": 16, "code": "PRW", "name": "Production Readiness Workspace", "category": "supplychain", "summary": "Validates readiness conditions before production release to reduce setup errors", "bullets": ["Validates readiness conditions before production release to reduce setup errors", "Forecast-to-Plan, Plan-to-Build, Build-to-Ship — Manufacturing Execution", "Validate production readiness / Release work orders"], "module": "Manufacturing Cloud Service"}, {"num": 17, "code": "MWC", "name": "Maintenance Work Order Cost Estimation Advisor Agent", "category": "finance", "summary": "Estimates work-order cost from planned materials, labor, and resources", "bullets": ["Estimates work-order cost from planned materials, labor, and resources", "Costing & Cost Accounting — Variance Analysis & Reporting", "Estimate item and work-order costs / Compare to budget"], "module": "Maintenance Cloud Service / Cost Accounting"}, {"num": 18, "code": "IPC", "name": "Inventory Planning Command Center", "category": "supplychain", "summary": "Resolves stockout and inventory-availability exceptions autonomously", "bullets": ["Resolves stockout and inventory-availability exceptions autonomously", "Inventory & Warehousing — Stock Status Management", "Optimize stock levels / Resolve inventory exceptions"], "module": "Inventory Management"}, {"num": 19, "code": "SQW", "name": "Supplier Qualification Workspace", "category": "supplychain", "summary": "Accelerates supplier onboarding, qualification, and compliance review", "bullets": ["Accelerates supplier onboarding, qualification, and compliance review", "Procure-to-Pay (P2P) — Supplier & Contract Administration", "Qualify suppliers / Maintain approved supplier status"], "module": "Supplier Qualification Management"}, {"num": 20, "code": "KAW", "name": "Kanban Administrative Workspace", "category": "supplychain", "summary": "Runs continuous, exception-based Kanban replenishment", "bullets": ["Runs continuous, exception-based Kanban replenishment", "Inventory & Warehousing — Inventory Transaction Management", "Execute replenishment / Synchronize inventory records"], "module": "Inventory Management / Manufacturing"}, {"num": 21, "code": "SAA", "name": "Supplier Advisor Agent", "category": "supplychain", "summary": "Automates supplier contract analysis, document extraction, onboarding, and compliance checks", "bullets": ["Automates supplier contract analysis, document extraction, onboarding, and compliance checks", "Procure-to-Pay (P2P) — Supplier & Contract Administration", "Onboard suppliers / Review contracts / Validate compliance"], "module": "Supplier Portal / Supplier Onboarding"}, {"num": 22, "code": "JAA", "name": "Job Architect Agent", "category": "hire2retire", "summary": "Assists with role design and job-architecture standardization", "bullets": ["Assists with role design and job-architecture standardization", "HRMS — HCM - Workforce Structure", "Design and standardize jobs, roles, and workforce structures"], "module": "Core HR / Workforce Structures"}, {"num": 23, "code": "ITP", "name": "Intelligent Talent Profiles Agent", "category": "hire2retire", "summary": "Keeps employee skill profiles current using inferred and declared skills", "bullets": ["Keeps employee skill profiles current using inferred and declared skills", "HRMS — HCM - Core HR Data Management", "Maintain employee skills and talent profiles"], "module": "Talent Management / Skills Center"}, {"num": 24, "code": "MCW", "name": "Manager Coaching Workspace", "category": "hire2retire", "summary": "Coaches managers through performance and development conversations", "bullets": ["Coaches managers through performance and development conversations", "HRMS — HCM - Employee Experience", "Coach performance and development conversations"], "module": "Performance Management / Manager Self-Service"}, {"num": 25, "code": "GRC", "name": "Grow Coach", "category": "hire2retire", "summary": "Supports employee career development and internal-mobility planning", "bullets": ["Supports employee career development and internal-mobility planning", "HRMS — HCM - Employee Experience", "Plan career development and internal mobility"], "module": "Career Development / Talent Management"}, {"num": 26, "code": "WSD", "name": "Workforce Skills Supply vs. Demand Agent", "category": "hire2retire", "summary": "Compares workforce skills supply against forecast demand", "bullets": ["Compares workforce skills supply against forecast demand", "HRMS — HCM - Reporting & Analytics", "Analyze skills supply and demand / Support workforce planning"], "module": "Workforce Management / Workforce Planning"}, {"num": 27, "code": "HWS", "name": "Hiring Workspace (Store Managers)", "category": "hire2retire", "summary": "Reduces recruiting administration and expedites frontline hiring workflows", "bullets": ["Reduces recruiting administration and expedites frontline hiring workflows", "HRMS — HCM - Recruiting & Onboarding", "Manage recruiting, candidate selection, and onboarding"], "module": "Recruiting / Talent Acquisition"}, {"num": 28, "code": "WOC", "name": "Workforce Operations Command Center", "category": "hire2retire", "summary": "Unifies scheduling, time, and absence management in real time", "bullets": ["Unifies scheduling, time, and absence management in real time", "HRMS — HCM - Time & Payroll", "Manage schedules, time reporting, and absence exceptions"], "module": "Workforce Management (Time & Labor, Absence)"}, {"num": 29, "code": "AIC", "name": "AI Concierge (Manager Concierge Agent)", "category": "hire2retire", "summary": "Answers workforce questions and routes compensation, leave, and talent actions", "bullets": ["Answers workforce questions and routes compensation, leave, and talent actions", "HRMS — HCM - Business Processes", "Provide role-based HR guidance and route workforce transactions"], "module": "Employee / Manager Self-Service"}, {"num": 30, "code": "TAA", "name": "Talent Advisor Agent", "category": "hire2retire", "summary": "Advises managers on team goals, performance, feedback, promotions, and career planning", "bullets": ["Advises managers on team goals, performance, feedback, promotions, and career planning", "HRMS — HCM - Employee Experience", "Review performance and feedback / Support career decisions"], "module": "Talent Management / Performance"}, {"num": 31, "code": "TSA", "name": "Team Sync Advisor Agent", "category": "hire2retire", "summary": "Supports team meetings, submits progress updates, and summarizes actions for managers", "bullets": ["Supports team meetings, submits progress updates, and summarizes actions for managers", "HRMS — HCM - Employee Experience", "Coordinate team check-ins / Summarize progress and actions"], "module": "HR Operations / Manager Self-Service"}, {"num": 32, "code": "OGA", "name": "OCI Generative AI Agents", "category": "enterprise", "summary": "Provides managed retrieval-augmented, conversational agents with persistent context and safeguards", "bullets": ["Provides managed retrieval-augmented, conversational agents with persistent context and safeguards", "AI with embedded agentic workflows — AI Model Deployment / Agentic Workflow Design", "Deploy AI models / Configure agentic workflows"], "module": "OCI Generative AI Agents Service"}, {"num": 33, "code": "OEA", "name": "OCI Enterprise AI Agents (GA)", "category": "enterprise", "summary": "Provides composable orchestration, reasoning, tool use, memory, vector storage, and NL2SQL", "bullets": ["Provides composable orchestration, reasoning, tool use, memory, vector storage, and NL2SQL", "AI with embedded agentic workflows — Automation Orchestration", "Configure agentic workflows / Monitor automation outcomes"], "module": "OCI Enterprise AI Agents"}, {"num": 34, "code": "OIC", "name": "OIC Agentic AI / Integration Agents", "category": "enterprise", "summary": "Embeds governed agents in integration flows and exposes trusted integrations for agent action", "bullets": ["Embeds governed agents in integration flows and exposes trusted integrations for agent action", "Integrations & Platform Architecture — ERP Integrations / REST API Services", "Configure integrations / Monitor interfaces / Handle exceptions"], "module": "Oracle Integration Cloud (OIC)"}, {"num": 35, "code": "OAA", "name": "Oracle Analytics AI Agent / AI Assistant", "category": "enterprise", "summary": "Provides conversational analytics, cluster and outlier detection, and natural-language access to analytics content", "bullets": ["Provides conversational analytics, cluster and outlier detection, and natural-language access to analytics content", "Reporting and Analytics — OTBI Analytics / Operational Dashboards", "Create analyses / Build dashboard views / Generate insights"], "module": "Oracle Analytics Cloud (OAC)"}, {"num": 36, "code": "PPM", "name": "PPM AI Agents (AI Agent Studio, embedded)", "category": "finance", "summary": "Automates project budgeting, forecasting, progressing, costing, billing, and contract tasks", "bullets": ["Automates project budgeting, forecasting, progressing, costing, billing, and contract tasks", "Project Accounting — PA - Capital Projects / Cross-Module Integration", "Budget, forecast, progress, cost, and bill projects"], "module": "Project Financial Management / Project Costing / Billing"}, {"num": 37, "code": "P2M", "name": "Plan-to-Manufacture agents", "category": "supplychain", "summary": "Umbrella entry for the planning, production-readiness, outside-processing, maintenance-cost, and Kanban agents listed above", "bullets": ["Umbrella entry for the planning, production-readiness, outside-processing, maintenance-cost, and Kanban agents listed above", "Forecast-to-Plan, Plan-to-Build, Build-to-Ship — Production Scheduling / Manufacturing Execution", "Plan production / Release work / Coordinate manufacturing execution"], "module": "Manufacturing and Maintenance Cloud"}, {"num": 38, "code": "QGA", "name": "Quote Generation Agent", "category": "commercial", "summary": "Generates configured quotes from natural-language or structured requests", "bullets": ["Generates configured quotes from natural-language or structured requests", "Lead-to-Order (L2O) — Quote-to-Order Processing", "Generate quotes and proposals / Build quote configurations"], "module": "Oracle CPQ"}, {"num": 39, "code": "QAS", "name": "Quote Advisor Supervisor Agent", "category": "commercial", "summary": "Oversees and validates quote recommendations before submission", "bullets": ["Oversees and validates quote recommendations before submission", "Lead-to-Order (L2O) — Quote-to-Order Processing", "Review quote recommendations / Approve quote submission"], "module": "Oracle CPQ"}, {"num": 40, "code": "CPQ", "name": "CPQ Administrator Assistant", "category": "commercial", "summary": "Assists administrators with CPQ configuration and maintenance", "bullets": ["Assists administrators with CPQ configuration and maintenance", "Lead-to-Order (L2O) — Pricing & Deal Configuration", "Configure products and pricing / Maintain quoting rules"], "module": "Oracle CPQ Administration"}, {"num": 41, "code": "AQA", "name": "AI-Powered Quote Assistance Agent", "category": "commercial", "summary": "Explains price waterfall, deal optimization, and other complex quoting concepts", "bullets": ["Explains price waterfall, deal optimization, and other complex quoting concepts", "Lead-to-Order (L2O) — Pricing & Deal Configuration", "Explain pricing / Support quote configuration and optimization"], "module": "Oracle CPQ"}, {"num": 42, "code": "SOD", "name": "Sales Order Discount Advisor", "category": "commercial", "summary": "Recommends sales-order discounts using order amount and historical data", "bullets": ["Recommends sales-order discounts using order amount and historical data", "Lead-to-Order (L2O) — Pricing & Deal Configuration", "Apply discount recommendations / Confirm pricing"], "module": "Order Management / CPQ"}, {"num": 43, "code": "DAA", "name": "Deal Advisor Agent", "category": "commercial", "summary": "Helps sellers identify subject-matter expertise needed to close deals", "bullets": ["Helps sellers identify subject-matter expertise needed to close deals", "Lead-to-Order (L2O) — Lead & Opportunity Management", "Manage opportunities / Coordinate deal support"], "module": "CX Sales"}, {"num": 44, "code": "GLC", "name": "Ledger & Financial Monitoring Agents — GL Period Close", "category": "finance", "summary": "Surfaces close exceptions and variance explanations during period-end", "bullets": ["Surfaces close exceptions and variance explanations during period-end", "Consolidation-to-Close (C2C) — GL Period Close", "Open or close GL periods / Review exceptions"], "module": "GL Period Close"}, {"num": 45, "code": "GAP", "name": "No Named Agent — Capability Gap", "category": "finance", "summary": "GAP: depreciation, mass additions, and retirement/disposal processing remain manual or rules-based", "bullets": ["GAP: depreciation, mass additions, and retirement/disposal processing remain manual or rules-based", "Acquire-to-Retire (A2R) — Depreciation Processing / Asset Retirement & Disposal", "Calculate depreciation / Process retirements"], "module": "Assets - Depreciation and Disposals"}], "closing": {"chip": "KEY TAKEAWAYS", "eyebrow": "WHERE THIS TAKES US", "headingLine1": "From Agent Inventory", "headingLine2": "to CBM-Governed Roadmap", "insights": ["Supply Chain & Operations carries the heaviest agent load (12 of 45 entries) — procure-to-pay and planning are where Oracle has shipped the deepest agentic coverage.", "Finance shows the most mapping complexity: 11 entries include one cross-process relationship (Ledger/Financial Monitoring agents serving both Journal Management and GL Period Close) and the deck's only documented gap.", "The one confirmed gap sits in Acquire-to-Retire: depreciation, mass additions, and asset retirement/disposal have no named Oracle agent published as of August 2026 and remain manual or rules-based.", "Engineering & Product is the thinnest platform (1 entry, Component Replacement Agent) — a signal that PLM/product-hub agentic coverage is still early relative to Finance and Supply Chain."], "ctaLabel": "Map these agents to your CBM-governed roadmap →", "sourceNote": "Fusion to CBM Mapping · CBM_Oracle_AI_Agent_Entire_List.xlsx · Aug 2026"}};
+
+function orbitField(colorVar){
+  return `<div class="orbit-field">
+    <div class="ring r1"><span class="node" style="--dot:${colorVar}"></span></div>
+    <div class="ring r2"><span class="node" style="--dot:${colorVar}"></span></div>
+    <div class="ring r3"><span class="node" style="--dot:${colorVar}"></span></div>
+  </div>`;
+}
+function blobs(c1,c2){
+  return `<div class="blob" style="width:520px;height:520px;top:-140px;left:-100px;background:${c1};"></div>
+  <div class="blob" style="width:420px;height:420px;bottom:-160px;right:-80px;background:${c2}; animation-delay:-8s;"></div>`;
+}
+function particles(n){
+  let html='<div class="particles">';
+  for(let i=0;i<n;i++){
+    const left = (i*37)%100;
+    const dur = 10 + (i%7)*2;
+    const delay = (i%9)*1.6;
+    const bottom = (i*13)%40;
+    html += `<span class="particle" style="left:${left}%; bottom:${bottom}%; animation-duration:${dur}s; animation-delay:-${delay}s;"></span>`;
+  }
+  html += '</div>';
+  return html;
+}
+function brandMark(color){
+  const dots = (DECK_SPEC.brand && DECK_SPEC.brand.logoDotColors) || ['#C41203','#82C21A','#26007E'];
+  const wordmark = (DECK_SPEC.brand && DECK_SPEC.brand.wordmark) || 'TRINAMIX';
+  const lastDot = color === '#fff' ? '#ffffff' : dots[2];
+  return `<div class="brand-mark" style="color:${color}">
+    <span class="dot3"><span style="background:${dots[0]}"></span><span style="background:${dots[1]}"></span><span style="background:${lastDot}"></span></span>
+    <span class="wordmark">${wordmark}</span>
+  </div>`;
+}
+function catColor(catKey){
+  const cat = DECK_SPEC.categories.find(c => c.key === catKey);
+  return cat ? cat.color : '#9E42FF';
+}
+function catTitle(catKey){
+  const cat = DECK_SPEC.categories.find(c => c.key === catKey);
+  return cat ? cat.title : '';
+}
+
+/* ---------------- OVERVIEW GRID (shared by both modes) ---------------- */
+function buildOverviewGrid(){
+  return DECK_SPEC.items.map((it,idx)=>{
+    return `<div class="ptable-cell reveal" style="--i:${idx+1}; background:${catColor(it.category)};">
+      <div class="pnum">${String(it.num).padStart(2,'0')}</div>
+      <div class="psym">${it.code}</div>
+      <div class="pname">${it.name}</div>
+      <div class="ppillar">${catTitle(it.category)}</div>
+    </div>`;
+  }).join('');
+}
+function buildLegend(){
+  return DECK_SPEC.categories.map(c=>{
+    const count = DECK_SPEC.items.filter(it=>it.category===c.key).length;
+    return `<div class="legend-item"><span class="legend-swatch" style="background:${c.color}"></span>${c.title} · ${count}</div>`;
+  }).join('');
+}
+function buildOverviewSlide(){
+  const m = DECK_SPEC.meta;
+  return `
+  <div class="slide slide-light">
+    ${orbitField('#9E42FF')}
+    ${blobs('#9E42FF2e','#0EA5A52e')}
+    <div class="topbar">
+      ${brandMark('#26007E')}
+      <div class="pillar-chip" style="background:var(--indigo)">${m.overviewChip || 'FULL OVERVIEW'}</div>
+    </div>
+    <div class="overview-wrap">
+      <div class="reveal" style="--i:0;">
+        <h2 class="section-title">${m.overviewHeading || 'Complete Overview'}</h2>
+        <p class="body-text muted" style="margin-top:6px; max-width:1000px;">${m.overviewBlurb || ''}</p>
+      </div>
+      <div class="ptable-grid">${buildOverviewGrid()}</div>
+      <div class="legend-row reveal" style="--i:1;">${buildLegend()}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- COVER ---------------- */
+function buildCoverSlide(){
+  const m = DECK_SPEC.meta;
+  const stats = (m.stats||[]).map(s=>`<div class="stat-chip glass"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+  return `
+  <div class="slide slide-dark">
+    ${orbitField('#ffffff')}
+    ${blobs('#ffffff22','#0EA5A544')}
+    ${particles(22)}
+    <div class="topbar" style="align-items:flex-start;">
+      ${brandMark('#fff')}
+      <div class="pillar-chip" style="background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3);">${m.topRightChip || ''}</div>
+    </div>
+    <div class="cover-wrap">
+      <div class="reveal eyebrow" style="--i:1;">${m.eyebrow || ''}</div>
+      <h1 class="big-title reveal" style="--i:2; margin-top:14px;">${m.title}</h1>
+      <p class="subtitle reveal" style="--i:3; margin-top:20px; max-width:860px;">${m.subtitle || ''}</p>
+      <div class="stat-row reveal" style="--i:4;">${stats}</div>
+    </div>
+    <div class="cover-footer reveal" style="--i:5;">
+      <span>${m.footerLeft || ''}</span>
+      <span>${m.footerRight || ''}</span>
+    </div>
+  </div>`;
+}
+
+/* ---------------- PIPELINE MODE: one slide per item ---------------- */
+function buildPurposeStrip(it, color){
+  return (it.purpose||[]).map(t=>`<span class="purpose-pill" style="background:${color}">${t}</span>`).join('');
+}
+function buildLevelCard(levelDef, idx, items, color){
+  const lis = (items||[]).map(t=>`<li>${t}</li>`).join('');
+  return `<div class="level-card glass reveal" style="--i:${idx}; --gc:${color};">
+    <span class="lc-badge" style="background:${color}">L${idx}</span>
+    <div class="lc-title">${levelDef.label}</div>
+    <ul>${lis}</ul>
+  </div>`;
+}
+function buildPipelineSlide(it, idx){
+  const color = catColor(it.category);
+  const levels = DECK_SPEC.pipeline_levels || [];
+  const levelCards = levels.map((ld,i)=> buildLevelCard(ld, i+1, it.levels[ld.key], color)).join('<span class="flow-arrow reveal" style="--i:1;">→</span>');
+  const total = DECK_SPEC.items.length;
+  return `
+  <div class="slide slide-light" data-tint="${color}">
+    ${orbitField(color)}
+    ${blobs(color+'40', color+'26')}
+    <div class="topbar">
+      ${brandMark('#26007E')}
+      <div class="pillar-chip" style="background:${color}">ITEM ${String(it.num).padStart(2,'0')} OF ${total} · ${catTitle(it.category).toUpperCase()}</div>
+    </div>
+    <div class="ws-wrap">
+      <div class="ws-num-badge" style="color:${color}">${String(it.num).padStart(2,'0')}</div>
+      <div class="ws-head reveal" style="--i:0;">
+        <div class="eyebrow" style="color:${color};">${catTitle(it.category)}</div>
+        <h1 class="ws-title">${it.name}</h1>
+        ${(it.purpose && it.purpose.length) ? `<div class="purpose-label">${DECK_SPEC.meta.purposeLabel || 'Function &amp; Purpose'}</div><div class="purpose-strip">${buildPurposeStrip(it, color)}</div>` : ''}
+      </div>
+      <div class="level-flow">${levelCards}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- CARDS MODE: one slide per category ---------------- */
+function buildAgentCard(it, idx, color){
+  const bullets = (it.bullets||[]).slice(1).map(b=>`<li>${b}</li>`).join('');
+  return `<div class="agent-card glass reveal" style="--i:${idx}; --gc:${color};">
+    <div class="a-top">
+      <span class="a-num">${String(it.num).padStart(2,'0')}</span>
+      <span class="a-sym">${it.code}</span>
+    </div>
+    <div class="a-name">${it.name}</div>
+    <div class="a-cap">${it.summary || (it.bullets && it.bullets[0]) || ''}</div>
+    <div class="a-more">
+      <ul>${bullets}</ul>
+      ${it.module ? `<span class="a-module">${it.module}</span>` : ''}
+    </div>
+  </div>`;
+}
+function buildCategorySlide(cat, num, totalCats){
+  const items = DECK_SPEC.items.filter(it=>it.category===cat.key);
+  const fewItems = items.length <= 4 ? 'few-items' : '';
+  const cards = items.map((it,idx)=>buildAgentCard(it, idx+2, cat.color)).join('');
+  return `
+  <div class="slide slide-light" data-tint="${cat.color}">
+    ${orbitField(cat.color)}
+    ${blobs(cat.color+'55', cat.color+'33')}
+    <div class="topbar">
+      ${brandMark('#26007E')}
+      <div class="pillar-chip" style="background:${cat.color}">CATEGORY ${num} OF ${totalCats} · ${cat.title.toUpperCase()}</div>
+    </div>
+    <div class="group-wrap">
+      <div class="group-side">
+        <div class="reveal" style="--i:0; position:relative;">
+          <div class="group-num-badge" style="color:${cat.color}">${String(num).padStart(2,'0')}</div>
+          <h2 class="section-title">${cat.title}</h2>
+          <div class="count-pill" style="background:${cat.color}">${items.length} ${DECK_SPEC.meta.itemLabelPlural || 'ITEMS'}</div>
+          <p class="group-blurb">${cat.blurb || ''}</p>
+        </div>
+      </div>
+      <div class="group-main ${fewItems}">${cards}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- CLOSING ---------------- */
+function buildClosingSlide(){
+  const c = DECK_SPEC.closing || {};
+  const insights = c.insights || [];
+  const cards = insights.map((t,i)=>`<div class="insight-card glass reveal" style="--i:${i+2};"><div class="ic-num">0${i+1}</div><p>${t}</p></div>`).join('');
+  return `
+  <div class="slide slide-dark">
+    ${orbitField('#ffffff')}
+    ${blobs('#0EA5A544','#ffffff22')}
+    ${particles(18)}
+    <div class="topbar" style="align-items:flex-start;">
+      ${brandMark('#fff')}
+      <div class="pillar-chip" style="background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3);">${c.chip || 'KEY TAKEAWAYS'}</div>
+    </div>
+    <div class="closing-wrap">
+      <div class="reveal eyebrow" style="--i:0;">${c.eyebrow || ''}</div>
+      <h1 class="big-title reveal" style="--i:1; font-size:50px; margin-top:10px;">${c.headingLine1 || ''}${c.headingLine2 ? '<br>'+c.headingLine2 : ''}</h1>
+      <div class="insight-grid">${cards}</div>
+      <div class="cta-row reveal" style="--i:6;">
+        ${c.ctaLabel ? `<div class="cta-btn">${c.ctaLabel}</div>` : ''}
+        ${c.sourceNote ? `<span class="source-note">${c.sourceNote}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- RENDER ---------------- */
+function render(){
+  const slides = [buildCoverSlide(), buildOverviewSlide()];
+  if(DECK_SPEC.detail_mode === 'pipeline'){
+    DECK_SPEC.items.forEach((it,idx) => slides.push(buildPipelineSlide(it, idx)));
+  } else {
+    DECK_SPEC.categories.forEach((cat,idx) => slides.push(buildCategorySlide(cat, idx+1, DECK_SPEC.categories.length)));
+  }
+  slides.push(buildClosingSlide());
+  document.getElementById('stage').innerHTML = slides.join('\n');
+  document.title = DECK_SPEC.meta.title || document.title;
+}
+render();
+
+/* ---------------- NAVIGATION ---------------- */
+let slideEls = Array.from(document.querySelectorAll('.slide'));
+const total = slideEls.length;
+let current = 0;
+let animating = false;
+
+const dotsWrap = document.getElementById('dots');
+slideEls.forEach((_, i)=>{
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0 ? ' active' : '');
+  d.addEventListener('click', ()=> goTo(i));
+  dotsWrap.appendChild(d);
+});
+const dotEls = Array.from(dotsWrap.children);
+
+function updateChrome(){
+  dotEls.forEach((d,i)=> d.classList.toggle('active', i===current));
+  document.getElementById('counter').textContent = String(current+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  document.getElementById('progress').style.width = (((current+1)/total)*100) + '%';
+}
+
+function goTo(idx){
+  if(animating || idx===current || idx<0 || idx>=total) return;
+  animating = true;
+  const prev = slideEls[current];
+  const next = slideEls[idx];
+  prev.classList.remove('active');
+  prev.classList.add('leaving');
+  next.classList.add('active');
+  current = idx;
+  updateChrome();
+  setTimeout(()=>{ prev.classList.remove('leaving'); animating = false; }, 520);
+}
+
+document.getElementById('prevBtn').addEventListener('click', ()=> goTo(current-1));
+document.getElementById('nextBtn').addEventListener('click', ()=> goTo(current+1));
+
+window.addEventListener('keydown', (e)=>{
+  if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){ e.preventDefault(); goTo(current+1); }
+  if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){ e.preventDefault(); goTo(current-1); }
+  if(e.key==='Home') goTo(0);
+  if(e.key==='End') goTo(total-1);
+});
+
+let touchStartX = null;
+document.addEventListener('touchstart', e=> touchStartX = e.touches[0].clientX);
+document.addEventListener('touchend', e=>{
+  if(touchStartX===null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(Math.abs(dx) > 50){ dx < 0 ? goTo(current+1) : goTo(current-1); }
+  touchStartX = null;
+});
+
+slideEls[0].classList.add('active');
+updateChrome();
+
+/* ---------------- SCALE TO FIT ---------------- */
+function scaleStage(){
+  const stageW = 1920, stageH = 1080;
+  const scale = Math.min(window.innerWidth/stageW, window.innerHeight/stageH);
+  document.getElementById('stage').style.transform = `scale(${scale})`;
+}
+document.getElementById('stage').style.transformOrigin = 'center center';
+scaleStage();
+window.addEventListener('resize', scaleStage);
+</script>
+</body>
+</html>

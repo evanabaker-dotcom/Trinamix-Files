@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oracle Fusion Cloud — Trinamix</title>
+<style>
+  :root{
+    --indigo:#26007E;
+    --violet-start:#2C0385;
+    --violet:#9E42FF;
+    --teal:#0EA5A5;
+    --charcoal:#22252B;
+    --slate:#595966;
+    --white:#FFFFFF;
+    --panel-w: 400px;
+    --r1: 120px; --r2: 195px; --r3: 270px; --r4: 345px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{ height:100%; }
+  body{
+    min-height:100%;
+    font-family:"Calibri","Segoe UI",Arial,sans-serif;
+    color:#fff;
+    background:#12042E;
+    overflow-x:hidden;
+  }
+
+  /* ---------- BACKDROP ---------- */
+  #bg{
+    position:fixed; inset:0; z-index:0; overflow:hidden;
+    background:
+      radial-gradient(1200px 800px at 12% 8%, rgba(158,66,255,.22), transparent 60%),
+      radial-gradient(1000px 700px at 90% 92%, rgba(14,165,165,.18), transparent 60%),
+      linear-gradient(135deg, #180538 0%, #2C0385 45%, #180538 100%);
+    background-size:100% 100%, 100% 100%, 220% 220%;
+    animation: gradientDrift 22s ease-in-out infinite;
+  }
+  @keyframes gradientDrift{
+    0%{ background-position: 0 0, 0 0, 0% 30%; }
+    50%{ background-position: 0 0, 0 0, 100% 70%; }
+    100%{ background-position: 0 0, 0 0, 0% 30%; }
+  }
+  .blob{ position:absolute; border-radius:50%; filter:blur(100px); opacity:.28; animation: drift 24s ease-in-out infinite alternate; }
+  @keyframes drift{ from{ transform:translate(0,0) scale(1); } to{ transform:translate(80px,-60px) scale(1.2); } }
+  .particles{ position:absolute; inset:0; }
+  .particle{ position:absolute; width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,.5); animation: floatUp linear infinite; }
+  @keyframes floatUp{
+    from{ transform:translateY(0) translateX(0); opacity:0; }
+    10%{ opacity:.9; } 90%{ opacity:.9; }
+    to{ transform:translateY(-160px) translateX(26px); opacity:0; }
+  }
+
+  /* ---------- LAYOUT ---------- */
+  #app{ position:relative; z-index:2; min-height:100vh; display:flex; flex-direction:column; }
+  .topbar{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:28px 40px 0 40px; flex-wrap:wrap; }
+  .brand-mark{ display:flex; align-items:center; gap:10px; font-size:13px; letter-spacing:.18em; }
+  .brand-mark .dot3{ display:inline-flex; gap:3px; }
+  .brand-mark .dot3 span{ width:6px; height:6px; border-radius:1px; display:inline-block; }
+  .wordmark{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; letter-spacing:.06em; }
+
+  .legend{ display:flex; gap:10px; flex-wrap:wrap; }
+  .legend-chip{
+    display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px;
+    font-size:12px; font-weight:700; letter-spacing:.04em; cursor:pointer;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    transition: background .2s ease, transform .2s ease, border-color .2s ease;
+  }
+  .legend-chip:hover, .legend-chip:focus-visible{ background:rgba(255,255,255,.16); transform:translateY(-2px); }
+  .legend-swatch{ width:10px; height:10px; border-radius:50%; }
+
+  .hero{ padding:8px 40px 0 40px; max-width:720px; }
+  .eyebrow{ letter-spacing:.22em; text-transform:uppercase; font-size:12.5px; font-weight:700; opacity:.8; }
+  h1.title{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:clamp(28px,3.4vw,44px); line-height:1.08; margin-top:10px; letter-spacing:-.01em; }
+  h1.title .line2{ display:block; background:linear-gradient(90deg, var(--violet), var(--teal)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .subtitle{ font-size:15.5px; line-height:1.55; opacity:.82; margin-top:12px; max-width:620px; }
+  .hint{ font-size:12px; letter-spacing:.04em; opacity:.6; margin-top:10px; }
+
+  .main{ position:relative; flex:1; display:grid; grid-template-columns: 1fr var(--panel-w); align-items:stretch; gap:0; min-height:520px; }
+  #orbitStage{ position:relative; overflow:hidden; }
+  #system{ position:absolute; inset:0; }
+
+  /* ---------- ORBIT RINGS ---------- */
+  /* .ring-track boxes are concentric and stack later-added (outer) rings on top of
+     earlier (inner) ones. Left interactive, that transparent box — not just its
+     visible dashed outline — would intercept hover/click before it ever reaches a
+     smaller ring's nodes underneath. Rings themselves are decorative, so they (and
+     the positioning wrappers inside them) are pointer-events:none; only the actual
+     .planet / .core-node buttons opt back in with pointer-events:auto. Hover state
+     still reaches .ring-track for the pause-on-hover rule below, because :hover
+     applies to ancestors of whatever descendant was actually hit, regardless of the
+     ancestor's own pointer-events value. */
+  .ring-track{
+    position:absolute; top:50%; left:50%; border-radius:50%;
+    border:1px dashed rgba(255,255,255,.16);
+    animation-name: spin; animation-timing-function:linear; animation-iteration-count:infinite;
+    transform: translate(-50%,-50%);
+    pointer-events:none;
+  }
+  .ring-track.is-dim{ opacity:.22; }
+  .ring-track:hover, .ring-track:focus-within{ animation-play-state:paused; }
+  .ring-track:hover .planet-spin, .ring-track:focus-within .planet-spin{ animation-play-state:paused; }
+  body.is-pinned .ring-track, body.is-pinned .planet-spin{ animation-play-state:paused; }
+  @keyframes spin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+
+  .planet-slot{ position:absolute; top:50%; left:50%; width:0; height:0; }
+  .planet-fix{ position:absolute; }
+  .planet-spin{ position:absolute; animation-name:spin2; animation-timing-function:linear; animation-iteration-count:infinite; }
+  @keyframes spin2{ to{ transform:rotate(360deg); } }
+  .planet-bob{ animation: bob ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-7px); } }
+
+  .planet{
+    position:relative; transform:translate(-50%,-50%);
+    width:64px; height:64px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background: rgba(255,255,255,.10); backdrop-filter:blur(10px);
+    border:1.5px solid rgba(255,255,255,.32);
+    color:#fff; cursor:pointer; text-decoration:none;
+    box-shadow: 0 6px 22px rgba(0,0,0,.28);
+    transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease, background .25s ease, border-color .25s ease;
+    pointer-events:auto;
+  }
+  .planet .p-code{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:13px; letter-spacing:.02em; }
+  .planet:hover, .planet:focus-visible, .planet.is-active{
+    transform:translate(-50%,-50%) scale(1.22);
+    background: var(--pc, var(--violet));
+    border-color:#fff;
+    box-shadow: 0 0 0 6px var(--pc-glow, rgba(158,66,255,.28)), 0 14px 34px rgba(0,0,0,.4);
+    z-index:20;
+  }
+  .planet.is-dim{ opacity:.28; }
+
+  /* ---------- CORE ---------- */
+  .core-wrap{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:15; }
+  .core-halo{
+    position:absolute; top:50%; left:50%; width:168px; height:168px; margin:-84px 0 0 -84px;
+    border-radius:50%; border:2px dashed rgba(255,255,255,.35);
+    animation: spin 40s linear infinite;
+    pointer-events:none;
+  }
+  .core-node{
+    position:relative; width:132px; height:132px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center;
+    background: linear-gradient(135deg, rgba(158,66,255,.35), rgba(14,165,165,.35));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border:1.5px solid rgba(255,255,255,.5);
+    box-shadow: 0 0 60px rgba(158,66,255,.35), 0 14px 40px rgba(0,0,0,.4);
+    cursor:pointer; color:#fff;
+    transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease;
+    pointer-events:auto;
+  }
+  .core-node:hover, .core-node:focus-visible, .core-node.is-active{ transform:scale(1.08); box-shadow:0 0 80px rgba(158,66,255,.5), 0 18px 46px rgba(0,0,0,.45); }
+  .core-node .c-code{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:20px; letter-spacing:.03em; }
+  .core-node .c-sub{ font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; opacity:.85; margin-top:4px; max-width:96px; line-height:1.3; }
+
+  /* ---------- INSPECTOR PANEL ---------- */
+  #inspector{
+    position:relative; z-index:5; padding:26px 26px 26px 24px; display:flex; flex-direction:column;
+    background: rgba(255,255,255,.08); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-left:1px solid rgba(255,255,255,.16);
+    overflow-y:auto;
+  }
+  #inspectorIdle{ margin:auto 0; }
+  #inspectorIdle .idle-eyebrow{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.65; font-weight:700; }
+  #inspectorIdle p{ font-size:14.5px; line-height:1.6; opacity:.85; margin-top:14px; }
+  .idle-legend{ margin-top:26px; display:flex; flex-direction:column; gap:10px; }
+  .idle-legend-row{ display:flex; align-items:center; gap:10px; font-size:12.5px; opacity:.85; }
+  .idle-legend-row .sw{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+
+  #inspectorDetail{ display:none; flex-direction:column; }
+  #inspectorDetail.is-open{ display:flex; animation: panelIn .4s cubic-bezier(.16,1,.3,1); }
+  @keyframes panelIn{ from{ opacity:0; transform:translateX(14px); } to{ opacity:1; transform:translateX(0); } }
+  .insp-top{ display:flex; align-items:center; justify-content:space-between; }
+  .insp-badge{ display:inline-flex; padding:6px 13px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
+  .insp-close{ background:rgba(255,255,255,.12); border:none; color:#fff; width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:13px; display:none; align-items:center; justify-content:center; }
+  body.is-pinned .insp-close{ display:flex; }
+  .insp-code{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:13px; letter-spacing:.1em; opacity:.55; margin-top:16px; }
+  .insp-name{ font-family:"Montserrat","Calibri",sans-serif; font-weight:800; font-size:24px; line-height:1.15; margin-top:4px; }
+  .insp-tagline{ font-size:13.5px; opacity:.75; margin-top:8px; line-height:1.5; }
+  .insp-section{ margin-top:20px; }
+  .insp-section h4{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; opacity:.6; font-weight:800; }
+  .insp-section p{ font-size:14px; line-height:1.6; margin-top:6px; opacity:.94; }
+  .insp-section ul{ list-style:none; margin-top:8px; }
+  .insp-section li{ font-size:13px; line-height:1.55; padding-left:16px; position:relative; margin-bottom:6px; opacity:.94; }
+  .insp-section li:before{ content:"\203A"; position:absolute; left:0; font-weight:800; color: var(--pc, var(--violet)); }
+
+  .foot{ position:relative; z-index:2; display:flex; justify-content:space-between; padding:14px 40px 22px 40px; font-size:11.5px; opacity:.55; letter-spacing:.03em; }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 980px){
+    .main{ grid-template-columns:1fr; grid-template-rows: minmax(360px,1fr) auto; }
+    #orbitStage{ min-height:360px; }
+    #inspector{ border-left:none; border-top:1px solid rgba(255,255,255,.16); max-height:46vh; }
+    #inspectorIdle{ margin:0; }
+  }
+  @media (max-width: 560px){
+    .topbar{ padding:20px 20px 0 20px; }
+    .hero{ padding:8px 20px 0 20px; }
+    .foot{ padding:12px 20px 18px 20px; }
+    .planet{ width:52px; height:52px; }
+    .core-node{ width:104px; height:104px; }
+    .core-halo{ width:136px; height:136px; margin:-68px 0 0 -68px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #bg, .blob, .particle, .ring-track, .planet-spin, .planet-bob, .core-halo{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="bg">
+  <div class="blob" style="width:520px;height:520px;top:-140px;left:-100px;background:#9E42FF;"></div>
+  <div class="blob" style="width:440px;height:440px;bottom:-160px;right:-80px;background:#0EA5A5; animation-delay:-9s;"></div>
+  <div class="particles" id="particles"></div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand-mark">
+      <span class="dot3"><span style="background:#C41203"></span><span style="background:#82C21A"></span><span style="background:#fff"></span></span>
+      <span class="wordmark">TRINAMIX</span>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow" id="heroEyebrow"></div>
+    <h1 class="title" id="heroTitle"></h1>
+    <p class="subtitle" id="heroSubtitle"></p>
+    <p class="hint" id="heroHint"></p>
+  </div>
+
+  <div class="main">
+    <div id="orbitStage"><div id="system"></div></div>
+    <aside id="inspector">
+      <div id="inspectorIdle">
+        <div class="idle-eyebrow">Explore the stack</div>
+        <p id="idleText"></p>
+        <div class="idle-legend" id="idleLegend"></div>
+      </div>
+      <div id="inspectorDetail">
+        <div class="insp-top">
+          <span class="insp-badge" id="inspBadge"></span>
+          <button class="insp-close" id="inspClose" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="insp-code" id="inspCode"></div>
+        <h3 class="insp-name" id="inspName"></h3>
+        <p class="insp-tagline" id="inspTagline"></p>
+        <div class="insp-section"><h4>Purpose</h4><p id="inspPurpose"></p></div>
+        <div class="insp-section"><h4>Function</h4><p id="inspFunction"></p></div>
+        <div class="insp-section"><h4>Capabilities</h4><ul id="inspCapabilities"></ul></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="foot">
+    <span id="footLeft"></span>
+    <span id="footRight"></span>
+  </div>
+</div>
+
+<script>
+const SPEC = {"meta": {"title": "Oracle Fusion Cloud", "titleLine2": "Full-Stack Capability Explorer", "eyebrow": "TRINAMIX · ORACLE FUSION CLOUD PRACTICE", "subtitle": "Hover or tap any node to see its purpose, function, and capabilities — from infrastructure to the applications people use every day.", "instructionHint": "Hover a node · tap on touch devices", "footerRight": "Full-Stack SaaS · PaaS · IaaS · DaaS"}, "core": {"code": "OFC", "name": "Oracle Fusion Cloud", "tagline": "One connected platform, four layers deep", "purpose": "A single, cloud-native platform that spans infrastructure to business applications, so every layer is built, secured, and updated together instead of stitched together after the fact.", "function": "Oracle Fusion Cloud connects the IaaS, PaaS, DaaS, and SaaS layers around it so business applications, integration, data, and infrastructure operate as one continuously updated system rather than separate products.", "capabilities": ["Continuous quarterly updates delivered across every layer at once", "Embedded AI and machine learning built into infrastructure, data, and applications", "Unified identity, security, and governance from the infrastructure layer up", "One consistent data model and user experience shared across SaaS modules"]}, "rings": [{"key": "iaas", "title": "IaaS", "fullName": "Infrastructure as a Service", "color": "#0EA5A5", "blurb": "The foundation everything else runs on — compute, storage, networking, and security provisioned on Oracle Cloud Infrastructure (OCI).", "nodes": [{"code": "CMP", "name": "OCI Compute", "purpose": "Elastic compute capacity to run any workload, from Fusion applications to custom services.", "function": "Provisions virtual machines, bare metal, and GPU instances on demand so Fusion Cloud applications and supporting workloads always have the capacity they need.", "capabilities": ["Flexible VM and bare-metal shapes", "Autoscaling based on demand", "GPU shapes for AI/ML workloads", "Pay-for-what-you-provision pricing"]}, {"code": "STG", "name": "OCI Storage", "purpose": "Durable, scalable storage for structured, unstructured, and archival data.", "function": "Provides the block, object, file, and archive storage tiers that Fusion databases, documents, and backups run on underneath.", "capabilities": ["Object storage with lifecycle policies", "High-performance block volumes", "Shared file storage for workloads", "Low-cost archive and backup tiers"]}, {"code": "NET", "name": "OCI Networking", "purpose": "Secure, high-throughput connectivity across cloud and on-premises systems.", "function": "Connects OCI resources, Fusion Cloud services, and on-prem systems through virtual cloud networks, load balancers, and dedicated interconnects.", "capabilities": ["Virtual cloud networks (VCNs)", "FastConnect private connectivity", "Load balancing and traffic management", "Hybrid and multi-cloud networking"]}, {"code": "IDN", "name": "Identity & Security", "purpose": "Centralized identity, access, and security governance for the whole stack.", "function": "Authenticates and authorizes every user and service across Fusion Cloud through OCI Identity and Access Management.", "capabilities": ["Single sign-on across Fusion apps", "Multi-factor authentication", "Role-based access control", "Built-in threat and anomaly detection"]}]}, {"key": "paas", "title": "PaaS", "fullName": "Platform as a Service", "color": "#3E84C3", "blurb": "The platform layer that runs, connects, and extends Fusion applications — database, integration, and low-code development.", "nodes": [{"code": "ADB", "name": "Autonomous Database", "purpose": "Self-managing database engine underneath Fusion applications and custom development.", "function": "Runs the transactional and analytical workloads Fusion Cloud depends on, with patching, tuning, and scaling handled automatically.", "capabilities": ["Self-patching and self-tuning", "Elastic compute and storage scaling", "Built-in high availability", "Machine-learning-driven performance optimization"]}, {"code": "OIC", "name": "Oracle Integration Cloud", "purpose": "Connects Fusion Cloud applications to each other and to third-party systems.", "function": "Orchestrates process flows and data exchange between SaaS modules, on-premises systems, and external partners.", "capabilities": ["Prebuilt adapters for Fusion applications", "Visual process and workflow designer", "B2B and partner integration", "Event-driven orchestration"]}, {"code": "VBX", "name": "Low-Code Platform", "purpose": "Rapid development of custom applications and Fusion extensions.", "function": "Lets delivery teams build web and mobile front ends and extend Fusion applications without heavy custom coding, using Visual Builder and APEX.", "capabilities": ["Drag-and-drop UI builder", "Prebuilt Fusion-aware components", "Mobile app packaging", "Reusable business objects and APIs"]}, {"code": "OPA", "name": "Process Automation", "purpose": "Automates structured and unstructured business processes that span modules.", "function": "Models approval workflows, case management, and decision logic that cross multiple Fusion applications.", "capabilities": ["BPMN-based process modeling", "Dynamic case management", "Business rules engine", "Human task and approval routing"]}]}, {"key": "daas", "title": "DaaS", "fullName": "Data as a Service", "color": "#6E63E1", "blurb": "Where Fusion data becomes insight — analytics, real-time replication, and a governed, trusted single source of truth.", "nodes": [{"code": "OAC", "name": "Oracle Analytics Cloud", "purpose": "Turns Fusion Cloud data into visual, actionable insight.", "function": "Connects to Fusion SaaS and other sources to deliver dashboards, reports, and self-service analytics for the business.", "capabilities": ["Prebuilt Fusion analytics content", "Natural-language querying", "Machine-learning-augmented insights", "Embedded analytics inside Fusion apps"]}, {"code": "GGD", "name": "Data Integration & GoldenGate", "purpose": "Moves and synchronizes data across systems in real time.", "function": "Replicates and streams data changes between Fusion applications, databases, and data lakes with minimal latency.", "capabilities": ["Real-time change data capture", "Heterogeneous database replication", "Streaming data pipelines", "Low-latency data synchronization"]}, {"code": "DLH", "name": "Data Lakehouse", "purpose": "A centralized store for structured and unstructured enterprise data.", "function": "Aggregates data from Fusion applications and external sources into one governed repository for analytics and AI.", "capabilities": ["Schema-on-read flexibility", "Tight integration with Autonomous Database and OAC", "Supports structured and semi-structured data", "Foundation for AI/ML model training"]}, {"code": "MDM", "name": "Master Data Management", "purpose": "Ensures a single, trusted version of core business data.", "function": "Governs and cleanses master records — customers, suppliers, items — shared across every Fusion SaaS module.", "capabilities": ["Data deduplication and matching", "Governance and stewardship workflows", "Cross-module data consistency", "Golden record management"]}]}, {"key": "saas", "title": "SaaS", "fullName": "Software as a Service", "color": "#9E42FF", "blurb": "The applications the business actually runs on — finance, people, supply chain, and customer experience.", "nodes": [{"code": "ERP", "name": "ERP Cloud", "purpose": "Runs core financial and operational processes as the system of record.", "function": "Manages general ledger, accounts payable and receivable, procurement, and project financials in one connected system.", "capabilities": ["Financial reporting and automated close", "Procurement and sourcing", "Project financial management", "Embedded AI for anomaly detection"]}, {"code": "HCM", "name": "HCM Cloud", "purpose": "Manages the full employee lifecycle across the organization.", "function": "Supports core HR, payroll, talent management, and workforce planning for every employee, everywhere.", "capabilities": ["Global HR and payroll", "Recruiting and onboarding", "Performance and talent management", "Workforce planning and analytics"]}, {"code": "SCM", "name": "SCM Cloud", "purpose": "Plans and executes the supply chain end-to-end.", "function": "Coordinates manufacturing, inventory, logistics, and product lifecycle across the supply network.", "capabilities": ["Demand and supply planning", "Manufacturing execution", "Inventory and order management", "Product lifecycle management"]}, {"code": "CX", "name": "CX Cloud", "purpose": "Manages customer-facing sales, service, and marketing in one place.", "function": "Unifies customer data and interactions across sales, marketing, and service so every function works from the same view of the customer.", "capabilities": ["Sales force automation", "Customer and field service", "Marketing automation", "Unified customer profiles"]}]}]};
+
+/* ---------------- background particles ---------------- */
+(function particles(){
+  const wrap = document.getElementById('particles');
+  let html = '';
+  for(let i=0;i<24;i++){
+    const left = (i*41)%100;
+    const dur = 11 + (i%7)*2;
+    const delay = (i%9)*1.7;
+    const bottom = (i*17)%40;
+    html += `<span class="particle" style="left:${left}%; bottom:${bottom}%; animation-duration:${dur}s; animation-delay:-${delay}s;"></span>`;
+  }
+  wrap.innerHTML = html;
+})();
+
+/* ---------------- hero + footer copy ---------------- */
+const m = SPEC.meta || {};
+document.getElementById('heroEyebrow').textContent = m.eyebrow || '';
+document.getElementById('heroTitle').innerHTML = (m.title||'') + (m.titleLine2 ? `<span class="line2">${m.titleLine2}</span>` : '');
+document.getElementById('heroSubtitle').textContent = m.subtitle || '';
+document.getElementById('heroHint').textContent = m.instructionHint || '';
+document.getElementById('footLeft').textContent = m.footerLeft || '';
+document.getElementById('footRight').textContent = m.footerRight || '';
+document.title = (m.title || document.title) + (m.titleLine2 ? ' — ' + m.titleLine2 : '');
+
+/* ---------------- legend ---------------- */
+const legendWrap = document.getElementById('legend');
+const idleLegendWrap = document.getElementById('idleLegend');
+SPEC.rings.forEach(r=>{
+  const chip = document.createElement('div');
+  chip.className = 'legend-chip';
+  chip.tabIndex = 0;
+  chip.innerHTML = `<span class="legend-swatch" style="background:${r.color}"></span>${r.title}`;
+  chip.addEventListener('mouseenter', ()=> highlightRing(r.key));
+  chip.addEventListener('mouseleave', ()=> highlightRing(null));
+  chip.addEventListener('focus', ()=> highlightRing(r.key));
+  chip.addEventListener('blur', ()=> highlightRing(null));
+  legendWrap.appendChild(chip);
+
+  const row = document.createElement('div');
+  row.className = 'idle-legend-row';
+  row.innerHTML = `<span class="sw" style="background:${r.color}"></span><strong style="color:${r.color}">${r.title}</strong>&nbsp;— ${r.fullName || ''}`;
+  idleLegendWrap.appendChild(row);
+});
+document.getElementById('idleText').textContent = m.subtitle
+  ? 'Move your cursor over any node in the map to see what it is, what it does, and what it enables.'
+  : '';
+
+function highlightRing(key){
+  document.querySelectorAll('.ring-track').forEach(rt=>{
+    rt.classList.toggle('is-dim', !!key && rt.dataset.ringKey !== key);
+  });
+  document.querySelectorAll('.planet').forEach(p=>{
+    p.classList.toggle('is-dim', !!key && p.dataset.ringKey !== key);
+  });
+}
+
+/* ---------------- orbit system ---------------- */
+const system = document.getElementById('system');
+const RING_DURATIONS = [70, 95, 122, 150]; // seconds, inner ring fastest
+const RING_FACTORS = [0.30, 0.50, 0.70, 0.90]; // fraction of available radius
+
+let currentRadii = [120,195,270,345];
+
+function buildSystem(){
+  system.innerHTML = '';
+
+  // core
+  const coreWrap = document.createElement('div');
+  coreWrap.className = 'core-wrap';
+  coreWrap.innerHTML = `
+    <div class="core-halo"></div>
+    <button class="core-node" id="coreNode" aria-label="${(SPEC.core||{}).name || 'Core'}">
+      <span class="c-code">${(SPEC.core||{}).code || ''}</span>
+      <span class="c-sub">${(SPEC.core||{}).name || ''}</span>
+    </button>`;
+  system.appendChild(coreWrap);
+
+  SPEC.rings.forEach((ring, ringIdx)=>{
+    const dur = RING_DURATIONS[ringIdx % RING_DURATIONS.length];
+    const dir = ringIdx % 2 === 0 ? 'normal' : 'reverse';
+    const dirRev = dir === 'normal' ? 'reverse' : 'normal';
+    const angleOffset = ringIdx * 22;
+
+    const track = document.createElement('div');
+    track.className = 'ring-track';
+    track.dataset.ringKey = ring.key;
+    track.style.animationDuration = dur + 's';
+    track.style.animationDirection = dir;
+
+    ring.nodes.forEach((node, nodeIdx)=>{
+      const angle = (360 / ring.nodes.length) * nodeIdx + angleOffset;
+
+      const slot = document.createElement('div');
+      slot.className = 'planet-slot';
+      slot.dataset.ring = ringIdx;
+      slot.dataset.angle = angle;
+
+      const fix = document.createElement('div');
+      fix.className = 'planet-fix';
+      fix.style.transform = `rotate(${-angle}deg)`;
+
+      const spin = document.createElement('div');
+      spin.className = 'planet-spin';
+      spin.style.animationDuration = dur + 's';
+      spin.style.animationDirection = dirRev;
+
+      const bob = document.createElement('div');
+      bob.className = 'planet-bob';
+      const bobDur = (3.4 + ((ringIdx*4+nodeIdx) % 5) * 0.6).toFixed(1);
+      const bobDelay = -((ringIdx*4+nodeIdx) % 7) * 0.5;
+      bob.style.animationDuration = bobDur + 's';
+      bob.style.animationDelay = bobDelay + 's';
+
+      const btn = document.createElement('button');
+      btn.className = 'planet';
+      btn.dataset.ringKey = ring.key;
+      btn.style.setProperty('--pc', ring.color);
+      btn.style.setProperty('--pc-glow', ring.color + '48');
+      btn.innerHTML = `<span class="p-code">${node.code}</span>`;
+      btn.setAttribute('aria-label', node.name);
+      attachNodeHandlers(btn, ring, node);
+
+      bob.appendChild(btn);
+      spin.appendChild(bob);
+      fix.appendChild(spin);
+      slot.appendChild(fix);
+      track.appendChild(slot);
+    });
+
+    system.appendChild(track);
+  });
+
+  attachCoreHandlers();
+  layoutRadii();
+}
+
+function layoutRadii(){
+  const stage = document.getElementById('orbitStage');
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const maxR = Math.max(60, Math.min(w, h) / 2 - 44);
+  currentRadii = RING_FACTORS.map(f => Math.round(maxR * f));
+
+  document.querySelectorAll('.ring-track').forEach((track, i)=>{
+    const r = currentRadii[i] || currentRadii[currentRadii.length-1];
+    track.style.width = (r*2) + 'px';
+    track.style.height = (r*2) + 'px';
+  });
+  document.querySelectorAll('.planet-slot').forEach(slot=>{
+    const i = +slot.dataset.ring;
+    const angle = +slot.dataset.angle;
+    const r = currentRadii[i] || currentRadii[currentRadii.length-1];
+    slot.style.transform = `rotate(${angle}deg) translateX(${r}px)`;
+  });
+}
+
+/* ---------------- interaction ---------------- */
+let pinned = null; // {el, ring, node} or null
+let hoverTimer = null;
+let activeEl = null; // element currently carrying the .is-active glow/scale
+
+function setActive(el){
+  if(activeEl && activeEl !== el) activeEl.classList.remove('is-active');
+  activeEl = el;
+  if(el) el.classList.add('is-active');
+}
+
+function showDetail(ring, node){
+  const badge = document.getElementById('inspBadge');
+  badge.textContent = ring.fullName || ring.title;
+  badge.style.background = ring.color;
+  document.getElementById('inspCode').textContent = node.code;
+  document.getElementById('inspName').textContent = node.name;
+  document.getElementById('inspTagline').textContent = node.tagline || '';
+  document.getElementById('inspTagline').style.display = node.tagline ? 'block' : 'none';
+  document.getElementById('inspPurpose').textContent = node.purpose || '';
+  document.getElementById('inspFunction').textContent = node.function || '';
+  const capsWrap = document.getElementById('inspCapabilities');
+  capsWrap.innerHTML = (node.capabilities || []).map(c=>`<li>${c}</li>`).join('');
+  document.getElementById('inspector').style.setProperty('--pc', ring.color);
+
+  document.getElementById('inspectorIdle').style.display = 'none';
+  const detail = document.getElementById('inspectorDetail');
+  detail.classList.remove('is-open'); void detail.offsetWidth; detail.classList.add('is-open');
+}
+
+function showIdle(){
+  document.getElementById('inspectorIdle').style.display = 'block';
+  document.getElementById('inspectorDetail').classList.remove('is-open');
+}
+
+function attachNodeHandlers(btn, ring, node){
+  btn.addEventListener('mouseenter', ()=>{
+    if(pinned) return;
+    clearTimeout(hoverTimer);
+    setActive(btn);
+    showDetail(ring, node);
+  });
+  btn.addEventListener('mouseleave', ()=>{
+    if(pinned) return;
+    setActive(null);
+    hoverTimer = setTimeout(showIdle, 120);
+  });
+  btn.addEventListener('focus', ()=>{ if(pinned) return; setActive(btn); showDetail(ring, node); });
+  btn.addEventListener('blur', ()=>{ if(pinned) return; setActive(null); showIdle(); });
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if(pinned && pinned.el === btn){
+      unpin();
+    } else {
+      pin(btn, ring, node);
+    }
+  });
+}
+
+function attachCoreHandlers(){
+  const core = document.getElementById('coreNode');
+  const coreRing = { color:'#7C4FE0', title:'Platform', fullName:'The Full Stack' };
+  const coreNodeData = SPEC.core || {};
+  core.addEventListener('mouseenter', ()=>{ if(pinned) return; clearTimeout(hoverTimer); setActive(core); showDetail(coreRing, coreNodeData); });
+  core.addEventListener('mouseleave', ()=>{ if(pinned) return; setActive(null); hoverTimer = setTimeout(showIdle, 120); });
+  core.addEventListener('focus', ()=>{ if(pinned) return; setActive(core); showDetail(coreRing, coreNodeData); });
+  core.addEventListener('blur', ()=>{ if(pinned) return; setActive(null); showIdle(); });
+  core.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if(pinned && pinned.el === core){ unpin(); } else { pin(core, coreRing, coreNodeData); }
+  });
+}
+
+function pin(el, ring, node){
+  clearTimeout(hoverTimer);
+  pinned = { el, ring, node };
+  document.body.classList.add('is-pinned');
+  setActive(el);
+  showDetail(ring, node);
+}
+function unpin(){
+  pinned = null;
+  document.body.classList.remove('is-pinned');
+  setActive(null);
+  showIdle();
+}
+document.getElementById('inspClose').addEventListener('click', unpin);
+window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') unpin(); });
+
+/* ---------------- init ---------------- */
+buildSystem();
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(layoutRadii, 120);
+});
+</script>
+</body>
+</html>
